@@ -44,7 +44,7 @@ RUN apt-get update && \
 # Compile osmocom-epdg
 RUN git clone https://github.com/herlesupreeth/osmo-epdg.git && \
     cd osmo-epdg && \
-    git checkout fix_fix_handling_of_create_bearer_req2 && \
+    git checkout fix_handling_of_create_bearer_req && \
     rebar3 compile && \
     rebar3 escriptize
 
