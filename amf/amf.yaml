@@ -36,7 +36,7 @@ amf:
       - plmn_id:
           mcc: MCC
           mnc: MNC
-        tac: TAC
+        tac: [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 ]
     plmn_support:
       - plmn_id:
           mcc: MCC

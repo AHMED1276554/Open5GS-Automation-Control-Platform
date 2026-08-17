@@ -175,14 +175,11 @@ services:
       - "2152/udp"
       - "8805/udp"
       - "9091/tcp"
-    # ports:
-    #   - "2152:2152/udp"
     cap_add:
       - NET_ADMIN
     privileged: true
     sysctls:
       - net.ipv4.ip_forward=1
-      #- net.ipv6.conf.all.disable_ipv6=0
     networks:
       default:
         ipv4_address: ${UPF_IP}
@@ -209,8 +206,6 @@ services:
       - "38412/sctp"
       - "7777/tcp"
       - "9091/tcp"
-    # ports:
-    #   - "38412:38412/sctp"
     networks:
       default:
         ipv4_address: ${AMF_IP}
@@ -306,7 +301,6 @@ services:
     environment:
       - GF_SECURITY_ADMIN_USER=${GRAFANA_USERNAME}
       - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD}
-      #- GF_INSTALL_PLUGINS=${GRAFANA_INSTALL_PLUGINS}
       - GF_PATHS_PROVISIONING=/etc/grafana/provisioning
       - GF_PATHS_DATA=/var/lib/grafana
       - METRICS_IP=${METRICS_IP}
@@ -317,12 +311,32 @@ services:
     networks:
       default:
         ipv4_address: ${GRAFANA_IP}
+  
+  sctp_proxy:
+    image: sctp_proxy_image
+    build: ./sctp_proxy
+    container_name: sctp_proxy
+    env_file:
+      - .env
+    environment:
+      - PROXY_LISTEN_PORT=38412
+    volumes:
+      - ./sctp_proxy:/mnt/sctp_proxy
+      - /etc/localtime:/etc/localtime:ro
+    ports:
+      - "38412:38412/sctp"
+      - "8000:8000/tcp"
+    networks:
+      default:
+        ipv4_address: ${SCTP_PROXY_IP}
+
 networks:
   default:
     name: docker_open5gs_default
     ipam:
       config:
         - subnet: ${TEST_NETWORK}
+
 volumes:
   grafana_data:
     name: grafana_data

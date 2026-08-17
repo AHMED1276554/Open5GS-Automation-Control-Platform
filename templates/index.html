@@ -1,0 +1,1523 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Orange 5G Core Intelligent Orchestrator</title>
+
+    <link rel="icon" type="image/svg+xml" href="https://upload.wikimedia.org/wikipedia/commons/c/c8/Orange_logo.svg">
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+    <style>
+        body {
+            font-family: "Poppins", sans-serif;
+            background-color: #0b0b0b;
+        }
+
+        html,
+        body {
+            overflow-x: hidden;
+            overflow-y: auto;
+            min-height: 100vh;
+        }
+
+        .glow-orange {
+            box-shadow: 0 0 20px rgba(255, 121, 0, 0.15);
+        }
+
+        .terminal-scroll::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        .terminal-scroll::-webkit-scrollbar-track {
+            background: #000;
+        }
+
+        .terminal-scroll::-webkit-scrollbar-thumb {
+            background: #333;
+            border-radius: 4px;
+        }
+
+        .terminal-scroll::-webkit-scrollbar-thumb:hover {
+            background: #ff7900;
+        }
+
+        .node-teardown {
+            animation: blink-vanish 1.2s forwards ease-in-out;
+        }
+
+        .node-blinking {
+            animation: blink-vanish-loop 1.2s infinite ease-in-out;
+        }
+
+        @keyframes blink-vanish {
+            0%, 40%, 80% {
+                opacity: 1;
+                transform: scale(1);
+                filter: brightness(1.5);
+            }
+
+            20%, 60% {
+                opacity: 0.2;
+                transform: scale(0.95);
+                filter: brightness(0.5);
+            }
+
+            100% {
+                transform: scale(0);
+                opacity: 0;
+            }
+        }
+
+        @keyframes blink-vanish-loop {
+            0%, 40%, 80% {
+                opacity: 1;
+                transform: scale(1);
+                filter: brightness(1.5);
+            }
+
+            20%, 60% {
+                opacity: 0.2;
+                transform: scale(0.95);
+                filter: brightness(0.5);
+            }
+
+            100% {
+                opacity: 1;
+                transform: scale(1);
+                filter: brightness(1);
+            }
+        }
+
+        .link-solid {
+            stroke-dasharray: none;
+            stroke-opacity: 0.9;
+            transition: all 0.3s ease;
+        }
+
+        .ping-packet-success {
+            r: 5;
+            fill: #22c55e;
+            filter: drop-shadow(0 0 8px #22c55e);
+        }
+
+        .ping-packet-fail {
+            r: 6;
+            fill: #ef4444;
+            filter: drop-shadow(0 0 10px #ef4444);
+        }
+
+        .draggable-node {
+            position: absolute;
+            cursor: grab;
+            user-select: none;
+            touch-action: none;
+            transition: box-shadow 0.2s ease;
+        }
+
+        .draggable-node:active {
+            cursor: grabbing;
+        }
+
+        #canvas-boundary {
+            scroll-behavior: auto; /* Switched to auto for smoother trackpad zooming */
+        }
+    </style>
+</head>
+
+<body class="text-slate-100 min-h-screen flex flex-col p-6 relative">
+
+    <header class="max-w-[1400px] w-full mx-auto flex items-center justify-between border-b border-stone-800 pb-4 mb-4 shrink-0">
+        <div class="flex items-center gap-4">
+            <button onclick="toggleMainMenu(true)" class="text-stone-400 hover:text-[#FF7900] text-2xl transition-colors cursor-pointer mr-2">
+                <i class="fa-solid fa-bars"></i>
+            </button>
+
+            <img src="https://upload.wikimedia.org/wikipedia/commons/c/c8/Orange_logo.svg" alt="Orange Logo" class="w-11 h-11 object-contain rounded">
+
+            <div>
+                <h1 class="text-xl font-bold text-white tracking-wide">
+                    Open5Gs <span class="text-[#FF7900]">AUTOMATION CONTROL PLATFORM</span>
+                </h1>
+
+                <p class="text-xs text-stone-500">
+                    Graduation Project MVP v2.2 • Dynamic Orchestrator
+                </p>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-4">
+            <div class="flex items-center gap-3 bg-stone-900 border border-stone-800 px-4 py-2 rounded-full">
+                <span id="system-status-dot" class="w-3 h-3 rounded-full bg-amber-600 animate-pulse"></span>
+
+                <span id="system-status-text" class="text-sm font-semibold text-amber-600 uppercase tracking-wider">
+                    System Standby
+                </span>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-[1400px] w-full mx-auto flex flex-col gap-4 flex-grow relative">
+
+        <div class="w-full h-[420px] bg-black border border-stone-800 rounded-2xl flex flex-col relative glow-orange shrink-0 overflow-hidden">
+            <div class="flex items-center justify-between bg-stone-900/50 p-3 border-b border-stone-900 z-10 shrink-0">
+                <div class="flex items-center gap-2">
+                    <span class="w-2.5 h-2.5 rounded-full bg-[#FF7900] animate-pulse"></span>
+
+                    <span class="text-xs font-mono text-stone-400 uppercase tracking-widest">
+                        Interactive Network Canvas
+                    </span>
+                </div>
+
+                <span class="text-[10px] text-stone-500 font-mono">
+                    Drag elements • Ctrl+Scroll to Zoom • Click for logs
+                </span>
+            </div>
+
+            <div id="canvas-boundary" class="relative flex-grow w-full h-full bg-black/90 overflow-auto terminal-scroll cursor-move">
+                <div id="canvas-inner" class="relative w-[5000px] h-[5000px] bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-stone-900/20 via-black to-black transition-transform duration-75 origin-top-left">
+                    <svg id="topology-svg" class="absolute inset-0 w-[5000px] h-[5000px] pointer-events-none z-0 overflow-visible"></svg>
+
+                    <div id="topology-container" class="relative z-10 w-full h-full"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 shrink-0">
+
+            <div class="bg-stone-900/40 border border-stone-800 rounded-2xl p-4 glow-orange flex flex-col justify-between">
+                <h2 class="text-sm font-bold text-slate-200 mb-3 uppercase tracking-wider text-[#FF7900] flex items-center justify-between">
+                    <span>
+                        <i class="fa-solid fa-server mr-1"></i>
+                        Infra Layer
+                    </span>
+                    <button onclick="centerOnCore()" class="bg-transparent hover:bg-[#FF7900] text-[#FF7900] hover:text-black border border-[#FF7900] font-bold px-3 py-1.5 rounded-lg text-xs uppercase transition-all cursor-pointer">
+                        Core
+                    </button>
+                </h2>
+
+                <div class="space-y-3">
+                    <div class="flex items-center justify-between bg-black/40 p-1.5 rounded-xl border border-stone-800/60">
+                        <button id="btn-core-toggle" onclick="toggleCore()" class="flex-grow bg-[#FF7900] hover:bg-[#e56d00] text-black font-bold py-2 px-3 rounded-lg text-xs uppercase flex items-center justify-center gap-2 cursor-pointer transition-colors">
+                            <i class="fa-solid fa-server"></i>
+                            Launch 5G Core
+                        </button>
+
+                        <span id="status-core" class="text-[10px] font-bold py-2 rounded-lg bg-red-950/20 text-red-500 border border-red-900/40 w-20 text-center ml-2">
+                            OFFLINE
+                        </span>
+                    </div>
+
+                    <div class="flex items-center justify-between bg-black/40 p-1.5 rounded-xl border border-stone-800/60">
+                        <div class="flex items-center gap-1.5 flex-grow mr-2">
+                            <span class="text-[10px] font-mono text-stone-400">ID:</span>
+
+                            <input type="number" id="gnb-id-input" min="1" max="99" value="1" class="w-10 bg-black border border-stone-800 rounded-lg py-1 px-1 text-center text-xs font-mono text-emerald-400 focus:outline-none focus:border-emerald-500">
+
+                            <span class="text-[10px] font-mono text-stone-400">TAC:</span>
+
+                            <input type="number" id="gnb-tac-input" min="1" max="10" value="1" class="w-10 bg-black border border-stone-800 rounded-lg py-1 px-1 text-center text-xs font-mono text-amber-400 focus:outline-none focus:border-amber-500">
+                        </div>
+
+                        <button id="btn-gnb-toggle" onclick="toggleGnb()" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2 px-2 rounded-lg text-xs uppercase flex items-center justify-center gap-1 cursor-pointer transition-colors">
+                            <i class="fa-solid fa-tower-cell"></i>
+                            Launch
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-stone-900/40 border border-stone-800 rounded-2xl p-4 glow-orange flex flex-col justify-between">
+                <h2 class="text-sm font-bold text-slate-200 mb-2 uppercase tracking-wider text-[#FF7900] flex items-center justify-between">
+                    <span>
+                        <i class="fa-solid fa-network-wired mr-1"></i>
+                        Active AMFs
+                    </span>
+
+                    <span id="amf-count-badge" class="text-[10px] bg-stone-800 text-orange-400 px-2 py-0.5 rounded-full font-mono">
+                        0 AMF
+                    </span>
+                </h2>
+
+                <div id="active-amfs-list" class="flex flex-col gap-2 overflow-y-auto max-h-[90px] p-1 terminal-scroll">
+                    <span class="text-xs text-stone-500 font-mono italic">
+                        No active AMFs
+                    </span>
+                </div>
+            </div>
+
+            <div class="bg-stone-900/40 border border-stone-800 rounded-2xl p-4 glow-orange flex flex-col justify-between">
+                <h2 class="text-sm font-bold text-slate-200 mb-2 uppercase tracking-wider text-[#FF7900]">
+                    <i class="fa-solid fa-mobile-screen-button mr-1"></i>
+                    UE Provisioning
+                </h2>
+
+                <div class="flex gap-1.5 mb-2">
+                    <div class="relative flex-1">
+                        <span class="absolute left-1.5 top-2 text-[10px] text-stone-600 font-mono">
+                            UE:
+                        </span>
+
+                        <input type="number" id="ue-index-input" min="1" max="99" value="1" class="w-full bg-black border border-stone-800 rounded-lg py-1.5 pl-7 pr-1 text-xs font-mono text-cyan-400 focus:outline-none focus:border-cyan-500">
+                    </div>
+
+                    <div class="relative flex-1">
+                        <span class="absolute left-1.5 top-2 text-[10px] text-stone-600 font-mono">
+                            gNB:
+                        </span>
+
+                        <input type="number" id="target-gnb-input" min="1" max="99" value="1" class="w-full bg-black border border-stone-800 rounded-lg py-1.5 pl-8 pr-1 text-xs font-mono text-emerald-400 focus:outline-none focus:border-emerald-500">
+                    </div>
+
+                    <div class="relative flex-1">
+                        <span class="absolute left-1.5 top-2 text-[10px] text-stone-600 font-mono">
+                            SST:
+                        </span>
+                        
+                        <input type="number" id="ue-sst-input" min="1" max="4" value="1" class="w-full bg-black border border-stone-800 rounded-lg py-1.5 pl-8 pr-1 text-xs font-mono text-amber-400 focus:outline-none focus:border-amber-500">
+                    </div>
+                </div>
+
+                <div class="flex gap-2">
+                    <button id="btn-ue-toggle" onclick="toggleUE()" class="flex-grow bg-cyan-600 hover:bg-cyan-500 text-white font-bold py-2 rounded-lg text-xs uppercase cursor-pointer transition-colors">
+                        Toggle UE
+                    </button>
+
+                    <button onclick="triggerHandover()" class="flex-grow bg-purple-600 hover:bg-purple-500 text-white font-bold py-2 rounded-lg text-xs uppercase cursor-pointer transition-colors">
+                        Handover
+                    </button>
+                </div>
+            </div>
+
+            <div class="bg-stone-900/40 border border-stone-800 rounded-2xl p-4 glow-orange flex flex-col justify-between">
+                <h2 class="text-sm font-bold text-slate-200 mb-2 uppercase tracking-wider text-[#FF7900] flex items-center justify-between">
+                    <span>
+                        <i class="fa-solid fa-stethoscope mr-1"></i>
+                        Diagnostics
+                    </span>
+                    <button id="ping-btn" onclick="triggerDynamicPing()" class="bg-transparent hover:bg-[#FF7900] text-[#FF7900] hover:text-black border border-[#FF7900] font-bold px-3 py-1.5 rounded-lg text-xs uppercase transition-all cursor-pointer">
+                        Ping
+                    </button>
+                </h2>
+
+                <div class="flex gap-2 mb-3">
+                    <!-- Custom Scrollable UE Select -->
+                    <div class="relative w-24 z-40">
+                        <select id="ping-source-select" class="hidden"></select>
+                        <button id="custom-ue-select-btn" onclick="toggleCustomUESelect()" type="button" class="w-full bg-black border border-stone-800 rounded-lg p-2 text-xs font-mono text-slate-300 focus:outline-none focus:border-[#FF7900] flex justify-between items-center transition-colors">
+                            <span id="custom-ue-select-text">-- UE --</span>
+                            <i class="fa-solid fa-chevron-down text-[10px]"></i>
+                        </button>
+                        <div id="custom-ue-select-list" class="hidden absolute bottom-full left-0 w-full mb-1 bg-black border border-stone-800 rounded-lg overflow-y-auto terminal-scroll max-h-[160px] shadow-[0_0_20px_rgba(0,0,0,0.9)]">
+                            <!-- Injected via JS -->
+                        </div>
+                    </div>
+
+                    <input type="text" id="ping-ip-input" value="8.8.8.8" placeholder="Target IP" class="flex-grow bg-black border border-stone-800 rounded-lg p-2 text-xs font-mono text-emerald-400 focus:outline-none focus:border-[#FF7900]">
+                </div>
+
+                <button onclick="wipeTopology()" class="w-full bg-black hover:bg-red-950/50 border border-stone-800 hover:border-red-600 text-stone-500 hover:text-red-500 font-bold py-2 px-4 rounded-lg transition-all text-xs uppercase tracking-widest cursor-pointer">
+                    <i class="fa-solid fa-power-off mr-2"></i>
+                    Wipe Topology
+                </button>
+            </div>
+        </div>
+    </main>
+
+    <footer class="max-w-[1400px] w-full mx-auto mt-6 pt-4 border-t border-stone-800 text-center text-stone-500 text-[11px] tracking-wide shrink-0">
+        © 2026 Graduation Project Team 4 - Information Technology Institute (ITI) & Orange Partnership.
+    </footer>
+
+    <!-- Main Sidebar Menu -->
+    <div id="main-sidebar" class="fixed inset-y-0 left-0 w-72 bg-black/95 border-r border-stone-800 backdrop-blur-lg transform -translate-x-full transition-transform duration-300 ease-in-out z-50 flex flex-col shadow-2xl">
+        <div class="p-5 border-b border-stone-800 flex justify-between items-center flex-row-reverse shrink-0">
+            <h3 class="font-bold text-[#FF7900] text-sm uppercase tracking-wider text-right w-full">
+                Navigation Menu
+            </h3>
+
+            <button onclick="toggleMainMenu(false)" class="text-stone-400 hover:text-white text-lg mr-4">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+
+        <div class="flex-grow p-4 flex flex-col gap-4 overflow-y-auto terminal-scroll">
+            
+            <a href="http://localhost:5001" target="_blank" onclick="toggleMainMenu(false);" class="w-full bg-stone-900 hover:bg-[#FF7900] text-slate-300 hover:text-black border border-stone-700 hover:border-[#FF7900] font-bold py-3 px-4 rounded-xl text-xs uppercase transition-all flex items-center gap-3 cursor-pointer">
+                <i class="fa-solid fa-comments text-lg"></i>
+                chat with netsage
+            </a>
+
+            <button onclick="toggleLogsSidebar(true); toggleMainMenu(false);" class="w-full bg-stone-900 hover:bg-[#FF7900] text-slate-300 hover:text-black border border-stone-700 hover:border-[#FF7900] font-bold py-3 px-4 rounded-xl text-xs uppercase transition-all flex items-center gap-3 cursor-pointer">
+                <i class="fa-solid fa-terminal text-lg"></i>
+                System Logs
+            </button>
+
+            <button onclick="toggleStatusSidebar(true); toggleMainMenu(false);" class="w-full bg-stone-900 hover:bg-[#FF7900] text-slate-300 hover:text-black border border-stone-700 hover:border-[#FF7900] font-bold py-3 px-4 rounded-xl text-xs uppercase transition-all flex items-center gap-3 cursor-pointer">
+                <i class="fa-solid fa-network-wired text-lg"></i>
+                Active Elements
+            </button>
+
+            <button onclick="openArchitecture(); toggleMainMenu(false);" class="w-full bg-stone-900 hover:bg-[#FF7900] text-slate-300 hover:text-black border border-stone-700 hover:border-[#FF7900] font-bold py-3 px-4 rounded-xl text-xs uppercase transition-all flex items-center gap-3 cursor-pointer">
+                <i class="fa-solid fa-sitemap text-lg"></i>
+                Open5Gs Architecture
+            </button>
+            
+            <a href="http://localhost:9999" target="_blank" class="w-full bg-stone-900 hover:bg-[#FF7900] text-slate-300 hover:text-black border border-stone-700 hover:border-[#FF7900] font-bold py-3 px-4 rounded-xl text-xs uppercase transition-all flex items-center gap-3 cursor-pointer">
+                <i class="fa-solid fa-database text-lg"></i>
+                WebUI Console
+            </a>
+
+            <a href="http://localhost:8000" target="_blank" class="w-full bg-stone-900 hover:bg-[#FF7900] text-slate-300 hover:text-black border border-stone-700 hover:border-[#FF7900] font-bold py-3 px-4 rounded-xl text-xs uppercase transition-all flex items-center gap-3 cursor-pointer">
+                <i class="fa-solid fa-route text-lg"></i>
+                SCTP Proxy
+            </a>
+
+            <a href="http://localhost:3000" target="_blank" class="w-full bg-stone-900 hover:bg-[#FF7900] text-slate-300 hover:text-black border border-stone-700 hover:border-[#FF7900] font-bold py-3 px-4 rounded-xl text-xs uppercase transition-all flex items-center gap-3 cursor-pointer">
+                <i class="fa-solid fa-chart-pie text-lg"></i>
+                Grafana
+            </a>
+
+            <a href="http://localhost:9090" target="_blank" class="w-full bg-stone-900 hover:bg-[#FF7900] text-slate-300 hover:text-black border border-stone-700 hover:border-[#FF7900] font-bold py-3 px-4 rounded-xl text-xs uppercase transition-all flex items-center gap-3 cursor-pointer">
+                <i class="fa-solid fa-chart-bar text-lg"></i>
+                Prometheus
+            </a>
+
+            <a href="https://github.com/herlesupreeth/docker_open5gs" target="_blank" class="w-full bg-stone-900 hover:bg-white text-slate-300 hover:text-black border border-stone-700 hover:border-white font-bold py-3 px-4 rounded-xl text-xs uppercase transition-all flex items-center gap-3 cursor-pointer mt-auto">
+                <i class="fa-brands fa-github text-lg"></i>
+                GitHub Project
+            </a>
+        </div>
+    </div>
+
+    <!-- System Logs Sidebar -->
+    <div id="logs-sidebar" class="fixed inset-y-0 left-0 w-full max-w-lg bg-black/95 border-r border-stone-800 backdrop-blur-lg transform -translate-x-full transition-transform duration-300 ease-in-out z-50 flex flex-col p-4 shadow-2xl">
+        <div class="flex items-center justify-between border-b border-stone-800 pb-3 mb-3 shrink-0">
+            <div class="flex gap-3">
+                <button onclick="toggleLogsSidebar(false)" class="text-stone-400 hover:text-white">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+
+                <button onclick="document.getElementById('terminal').innerHTML=''" class="text-stone-500 hover:text-stone-300 text-[10px]">
+                    <i class="fa-solid fa-trash-can"></i>
+                </button>
+            </div>
+
+            <h3 class="font-bold text-white text-xs uppercase">
+                System Logs
+                <i class="fa-solid fa-terminal text-[#FF7900] ml-2"></i>
+            </h3>
+        </div>
+
+        <div id="terminal" class="flex-grow font-mono text-[10px] overflow-y-auto text-orange-400 p-2 terminal-scroll bg-black/80 rounded-lg border border-stone-900 whitespace-pre-wrap text-left" dir="ltr"></div>
+    </div>
+
+    <!-- Active Elements Status Sidebar -->
+    <div id="status-sidebar" class="fixed inset-y-0 left-0 w-full max-w-md bg-black/95 border-r border-stone-800 backdrop-blur-lg transform -translate-x-full transition-transform duration-300 ease-in-out z-50 flex flex-col p-4 shadow-2xl">
+        <div class="flex items-center justify-between border-b border-stone-800 pb-3 mb-3 shrink-0">
+            <div class="flex gap-3">
+                <button onclick="toggleStatusSidebar(false)" class="text-stone-400 hover:text-white transition-colors">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <h3 class="font-bold text-white text-xs uppercase">
+                Active Elements
+                <i class="fa-solid fa-network-wired text-[#FF7900] ml-2"></i>
+            </h3>
+        </div>
+
+        <div class="flex-grow overflow-y-auto terminal-scroll flex flex-col gap-6 p-1 text-left" dir="ltr">
+            <!-- AMFs Section -->
+            <div>
+                <h4 class="text-[#FF7900] text-[11px] font-bold mb-3 uppercase border-b border-stone-800 pb-2 tracking-wider flex items-center justify-between">
+                    <span>Active AMFs</span>
+                    <i class="fa-solid fa-microchip text-stone-600"></i>
+                </h4>
+                <div id="status-amf-list" class="flex flex-col gap-2"></div>
+            </div>
+            <!-- gNBs Section -->
+            <div>
+                <h4 class="text-emerald-500 text-[11px] font-bold mb-3 uppercase border-b border-stone-800 pb-2 tracking-wider flex items-center justify-between">
+                    <span>Active gNBs</span>
+                    <i class="fa-solid fa-tower-cell text-stone-600"></i>
+                </h4>
+                <div id="status-gnb-list" class="flex flex-col gap-2"></div>
+            </div>
+            <!-- UEs Section -->
+            <div>
+                <h4 class="text-cyan-500 text-[11px] font-bold mb-3 uppercase border-b border-stone-800 pb-2 tracking-wider flex items-center justify-between">
+                    <span>Active UEs</span>
+                    <i class="fa-solid fa-mobile-screen-button text-stone-600"></i>
+                </h4>
+                <div id="status-ue-list" class="flex flex-col gap-2"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Container Logs Sidebar -->
+    <div id="container-logs-sidebar" class="fixed inset-y-0 left-0 w-full max-w-lg bg-stone-950/95 border-r border-stone-700 backdrop-blur-xl transform -translate-x-full transition-transform duration-300 ease-in-out z-[60] flex flex-col p-4 shadow-2xl">
+        <div class="flex items-center justify-between border-b border-stone-700 pb-3 mb-3 shrink-0">
+            <button onclick="closeContainerLogs()" class="text-stone-400 hover:text-white text-lg">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+
+            <h3 class="font-bold text-white text-xs uppercase tracking-widest flex items-center gap-2 flex-row-reverse">
+                <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                <span id="container-log-title">Live Logs</span>
+            </h3>
+        </div>
+
+        <div id="container-terminal" class="flex-grow font-mono text-[11px] overflow-y-auto text-white p-3 terminal-scroll bg-black rounded-lg border border-stone-800 whitespace-pre-wrap leading-relaxed shadow-inner"></div>
+    </div>
+
+    <!-- Architecture Image Modal -->
+    <div id="architecture-modal" class="fixed inset-0 bg-black/95 z-[70] hidden flex items-center justify-center p-6 backdrop-blur-md transition-opacity">
+        <button onclick="closeArchitecture()" class="absolute top-6 right-6 text-stone-400 hover:text-[#FF7900] text-3xl z-50 transition-colors cursor-pointer">
+            <i class="fa-solid fa-xmark"></i>
+        </button>
+        <div class="max-w-[90%] max-h-[95%] overflow-auto rounded-xl border border-stone-700 bg-stone-900 shadow-[0_0_50px_rgba(255,121,0,0.15)] relative">
+            <img src="/static/Open5GS_core_architecture.jpg" onerror="this.onerror=null; this.src='Open5GS_core_architecture.jpg';" alt="Open5GS Architecture" class="w-full h-auto object-contain rounded-lg">
+        </div>
+    </div>
+
+    <script>
+        let nodePositions = {
+            core: { x: 2500, y: 2500 }
+        };
+        
+        let currentZoom = 1;
+
+        let currentData = {
+            core: "OFFLINE",
+            gnbs: {},
+            ues: {},
+            amfs: {}
+        };
+
+        let pendingDeletions = {};
+        let liveLogInterval = null;
+        
+        const tacColors = [
+            { bg: 'bg-emerald-950/80', border: 'border-emerald-500', shadow: 'shadow-[0_0_20px_rgba(34,197,94,0.4)]', icon: 'text-emerald-400', text: 'text-emerald-300' },
+            { bg: 'bg-blue-950/80', border: 'border-blue-500', shadow: 'shadow-[0_0_20px_rgba(59,130,246,0.4)]', icon: 'text-blue-400', text: 'text-blue-300' },
+            { bg: 'bg-purple-950/80', border: 'border-purple-500', shadow: 'shadow-[0_0_20px_rgba(168,85,247,0.4)]', icon: 'text-purple-400', text: 'text-purple-300' },
+            { bg: 'bg-pink-950/80', border: 'border-pink-500', shadow: 'shadow-[0_0_20px_rgba(236,72,153,0.4)]', icon: 'text-pink-400', text: 'text-pink-300' },
+            { bg: 'bg-yellow-950/80', border: 'border-yellow-500', shadow: 'shadow-[0_0_20px_rgba(234,179,8,0.4)]', icon: 'text-yellow-400', text: 'text-yellow-300' },
+            { bg: 'bg-indigo-950/80', border: 'border-indigo-500', shadow: 'shadow-[0_0_20px_rgba(99,102,241,0.4)]', icon: 'text-indigo-400', text: 'text-indigo-300' },
+            { bg: 'bg-rose-950/80', border: 'border-rose-500', shadow: 'shadow-[0_0_20px_rgba(244,63,94,0.4)]', icon: 'text-rose-400', text: 'text-rose-300' },
+            { bg: 'bg-teal-950/80', border: 'border-teal-500', shadow: 'shadow-[0_0_20px_rgba(20,184,166,0.4)]', icon: 'text-teal-400', text: 'text-teal-300' },
+            { bg: 'bg-fuchsia-950/80', border: 'border-fuchsia-500', shadow: 'shadow-[0_0_20px_rgba(217,70,239,0.4)]', icon: 'text-fuchsia-400', text: 'text-fuchsia-300' },
+            { bg: 'bg-cyan-950/80', border: 'border-cyan-500', shadow: 'shadow-[0_0_20px_rgba(6,182,212,0.4)]', icon: 'text-cyan-400', text: 'text-cyan-300' }
+        ];
+
+        function centerOnCore() {
+            const boundary = document.getElementById("canvas-boundary");
+            const coreNode = document.getElementById("node-core");
+            if (boundary) {
+                let targetX = 2500;
+                let targetY = 2500;
+                if (coreNode) {
+                    targetX = coreNode.offsetLeft + coreNode.offsetWidth / 2;
+                    targetY = coreNode.offsetTop + coreNode.offsetHeight / 2;
+                } else if (nodePositions.core) {
+                    targetX = nodePositions.core.x;
+                    targetY = nodePositions.core.y;
+                }
+                
+                targetX *= currentZoom;
+                targetY *= currentZoom;
+
+                boundary.scrollTo({
+                    left: targetX - boundary.clientWidth / 2,
+                    top: targetY - boundary.clientHeight / 2,
+                    behavior: 'smooth'
+                });
+            }
+        }
+
+        function getTacStyle(tac) {
+            let index = (tac - 1) % tacColors.length;
+            if (index < 0) index = 0;
+            return tacColors[index];
+        }
+
+        function toggleMainMenu(show) {
+            document.getElementById("main-sidebar").style.transform =
+                show ? "translateX(0)" : "translateX(-100%)";
+        }
+
+        function toggleLogsSidebar(show) {
+            document.getElementById("logs-sidebar").style.transform =
+                show ? "translateX(0)" : "translateX(-100%)";
+        }
+
+        function toggleStatusSidebar(show) {
+            document.getElementById("status-sidebar").style.transform =
+                show ? "translateX(0)" : "translateX(-100%)";
+        }
+
+        function openArchitecture() {
+            const modal = document.getElementById("architecture-modal");
+            modal.classList.remove("hidden");
+        }
+
+        function closeArchitecture() {
+            const modal = document.getElementById("architecture-modal");
+            modal.classList.add("hidden");
+        }
+
+        function openContainerLogs(containerName) {
+            document.getElementById("container-logs-sidebar").style.transform =
+                "translateX(0)";
+
+            document.getElementById("container-log-title").innerText =
+                `Live: ${containerName}`;
+
+            document.getElementById("container-terminal").innerText =
+                "Loading logs...";
+
+            if (liveLogInterval) {
+                clearInterval(liveLogInterval);
+            }
+
+            fetchContainerLogs(containerName);
+
+            liveLogInterval = setInterval(
+                () => fetchContainerLogs(containerName),
+                2000
+            );
+        }
+
+        function closeContainerLogs() {
+            document.getElementById("container-logs-sidebar").style.transform =
+                "translateX(-100%)";
+
+            if (liveLogInterval) {
+                clearInterval(liveLogInterval);
+                liveLogInterval = null;
+            }
+        }
+
+        function fetchContainerLogs(containerName) {
+            fetch(`/api/container-logs?container=${encodeURIComponent(containerName)}`)
+                .then(response => response.json())
+                .then(data => {
+                    const terminal = document.getElementById("container-terminal");
+                    const atBottom =
+                        terminal.scrollHeight - terminal.clientHeight <=
+                        terminal.scrollTop + 40;
+
+                    const cleanLogs = data.logs ? data.logs.replace(/\x1b\[[0-9;]*[a-zA-Z]/g, '') : "No logs available.";
+                    terminal.innerText = cleanLogs;
+
+                    if (atBottom) {
+                        terminal.scrollTop = terminal.scrollHeight;
+                    }
+                })
+                .catch(() => {});
+        }
+
+        function triggerAction(actionName, extraData = {}) {
+            return fetch("/api/action", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    action: actionName,
+                    ...extraData
+                })
+            }).then(response => response.json());
+        }
+
+        function toggleCore() {
+            if (currentData.core === "ONLINE") {
+                const coreNode = document.getElementById("node-core");
+                const internetNode = document.getElementById("node-internet");
+                const coreInternetLink = document.getElementById("link-core-internet");
+
+                if (coreNode) coreNode.classList.add("node-teardown");
+                if (internetNode) internetNode.classList.add("node-teardown");
+                if (coreInternetLink) coreInternetLink.classList.add("node-teardown");
+
+                pendingDeletions.core = true;
+                pendingDeletions.internet = true;
+                updateUIStatus(currentData);
+
+                setTimeout(() => triggerAction("stop_core"), 1000);
+            } else {
+                triggerAction("start_core");
+            }
+        }
+
+        function toggleGnb() {
+            const id = document.getElementById("gnb-id-input").value;
+            const tacInput = document.getElementById("gnb-tac-input");
+
+            let tac = parseInt(tacInput.value, 10);
+
+            if (Number.isNaN(tac)) tac = 1;
+            tac = Math.min(10, Math.max(1, tac));
+
+            tacInput.value = tac;
+
+            if (currentData.gnbs && currentData.gnbs[id]) {
+                const node = document.getElementById(`node-gnb-${id}`);
+                const link = document.getElementById(`link-gnb-${id}-core`);
+
+                if (node) {
+                    node.classList.add("node-teardown");
+                }
+                if (link) {
+                    link.classList.add("node-teardown");
+                }
+
+                pendingDeletions[`gnb-${id}`] = true;
+                updateUIStatus(currentData);
+
+                setTimeout(
+                    () => triggerAction("stop_gnb", { gnb_id: id }),
+                    1000
+                );
+            } else {
+                triggerAction("start_gnb", {
+                    gnb_id: id,
+                    tac: tac
+                });
+            }
+        }
+
+        function toggleUE() {
+            const id = document.getElementById("ue-index-input").value;
+            const target = document.getElementById("target-gnb-input").value;
+            const sst = document.getElementById("ue-sst-input").value;
+
+            if (currentData.ues && currentData.ues[id]) {
+                const node = document.getElementById(`node-ue-${id}`);
+                const oldGnb = currentData.ues[id].gnb;
+                const link = document.getElementById(`link-ue-${id}-gnb-${oldGnb}`);
+
+                if (node) {
+                    node.classList.add("node-teardown");
+                }
+                if (link) {
+                    link.classList.add("node-teardown");
+                }
+
+                pendingDeletions[`ue-${id}`] = true;
+                updateUIStatus(currentData);
+
+                setTimeout(
+                    () => triggerAction("stop_ue", { ue_id: id }), 
+                    1000
+                );
+            } else {
+                triggerAction("add_ue", {
+                    ue_id: id,
+                    target_gnb: target,
+                    sst: parseInt(sst, 10) || 1
+                });
+            }
+        }
+
+        function wipeTopology() {
+            document
+                .querySelectorAll(".draggable-node, line")
+                .forEach(node => node.classList.add("node-teardown"));
+
+            pendingDeletions.core = true;
+            pendingDeletions.internet = true;
+            Object.keys(currentData.gnbs || {}).forEach(id => pendingDeletions[`gnb-${id}`] = true);
+            Object.keys(currentData.ues || {}).forEach(id => pendingDeletions[`ue-${id}`] = true);
+            updateUIStatus(currentData);
+
+            setTimeout(() => triggerAction("stop_all"), 1000);
+        }
+
+        function triggerHandover() {
+            const id = document.getElementById("ue-index-input").value;
+            const target = document.getElementById("target-gnb-input").value;
+            const sst = document.getElementById("ue-sst-input").value;
+
+            if (!currentData.ues || !currentData.ues[id]) {
+                alert("UE must be running to handover.");
+                return;
+            }
+
+            const ueNode = document.getElementById(`node-ue-${id}`);
+            if (ueNode) {
+                ueNode.classList.add("node-blinking");
+            }
+
+            const oldGnb = currentData.ues[id].gnb;
+            const oldLink = document.getElementById(`link-ue-${id}-gnb-${oldGnb}`);
+            if (oldLink) {
+                oldLink.classList.add("node-teardown");
+            }
+
+            triggerAction("handover_ue", {
+                ue_id: id,
+                target_gnb: target,
+                sst: parseInt(sst, 10) || 1
+            });
+        }
+
+        // Custom UE Select JS Functions
+        function toggleCustomUESelect() {
+            document.getElementById('custom-ue-select-list').classList.toggle('hidden');
+        }
+
+        document.addEventListener('click', function(event) {
+            const btn = document.getElementById('custom-ue-select-btn');
+            const list = document.getElementById('custom-ue-select-list');
+            if (btn && list && !btn.contains(event.target) && !list.contains(event.target)) {
+                list.classList.add('hidden');
+            }
+        });
+
+        function selectPingUE(ueId) {
+            const select = document.getElementById("ping-source-select");
+            select.value = ueId;
+            document.getElementById("custom-ue-select-text").textContent = ueId ? `UE ${ueId}` : "-- UE --";
+            document.getElementById("custom-ue-select-list").classList.add("hidden");
+        }
+
+        function triggerDynamicPing() {
+            const ueNumber = document.getElementById("ping-source-select").value;
+            const targetIp = document.getElementById("ping-ip-input").value || "8.8.8.8";
+
+            if (!ueNumber) {
+                alert("Select a UE.");
+                return;
+            }
+
+            const button = document.getElementById("ping-btn");
+
+            button.innerHTML =
+                '<i class="fa-solid fa-spinner animate-spin"></i>';
+
+            triggerAction("ping_dynamic_ue", {
+                ue_num: ueNumber,
+                target_ip: targetIp
+            }).then(response => {
+                button.innerHTML = "Ping";
+
+                animatePingStream(
+                    ueNumber,
+                    response.status === "success"
+                );
+            });
+        }
+
+        function makeDraggable(element, key) {
+            let lastX = 0;
+            let lastY = 0;
+            let dragged = false;
+
+            element.onmousedown = function(event) {
+                event.preventDefault();
+
+                dragged = false;
+                lastX = event.clientX;
+                lastY = event.clientY;
+
+                document.onmouseup = stopDragging;
+                document.onmousemove = dragElement;
+            };
+
+            function dragElement(event) {
+                event.preventDefault();
+
+                dragged = true;
+
+                // Adjust the difference by the current zoom level
+                const xDifference = (lastX - event.clientX) / currentZoom;
+                const yDifference = (lastY - event.clientY) / currentZoom;
+
+                lastX = event.clientX;
+                lastY = event.clientY;
+
+                const newLeft = element.offsetLeft - xDifference;
+                const newTop = element.offsetTop - yDifference;
+
+                element.style.left = `${newLeft}px`;
+                element.style.top = `${newTop}px`;
+
+                nodePositions[key] = {
+                    x: newLeft,
+                    y: newTop
+                };
+
+                redrawLines();
+            }
+
+            function stopDragging() {
+                document.onmouseup = null;
+                document.onmousemove = null;
+
+                if (dragged) {
+                    element.setAttribute("data-dragged", "true");
+
+                    setTimeout(
+                        () => element.removeAttribute("data-dragged"),
+                        50
+                    );
+                }
+            }
+        }
+
+        function createNode(id, key, position, html, onClick) {
+            const topology = document.getElementById("topology-container");
+
+            const node = document.createElement("div");
+
+            node.id = id;
+            node.className =
+                "draggable-node flex flex-col items-center gap-2 cursor-pointer";
+
+            node.style.left = `${position.x}px`;
+            node.style.top = `${position.y}px`;
+
+            node.innerHTML = html;
+
+            node.onclick = function() {
+                if (this.getAttribute("data-dragged") === "true") {
+                    return;
+                }
+
+                onClick();
+            };
+
+            topology.appendChild(node);
+            makeDraggable(node, key);
+
+            return node;
+        }
+        
+        function getCenter(elementId) {
+            const el = document.getElementById(elementId);
+            if (!el) return null;
+            return {
+                x: el.offsetLeft + el.offsetWidth / 2,
+                y: el.offsetTop + el.offsetHeight / 2
+            };
+        }
+
+        function getBottomCenter(elementId) {
+            const el = document.getElementById(elementId);
+            if (!el) return null;
+            return {
+                x: el.offsetLeft + el.offsetWidth / 2,
+                y: el.offsetTop + 40
+            };
+        }
+
+        function getFallbackCenter(key, defaultX, defaultY, offset) {
+            if (nodePositions[key]) {
+                return { x: nodePositions[key].x + offset, y: nodePositions[key].y + offset };
+            }
+            return { x: defaultX + offset, y: defaultY + offset };
+        }
+
+        function drawLine(svg, id, pos1, pos2, color = 'stroke-stone-700', dash = '') {
+            let line = document.getElementById(id);
+            if (!line) {
+                line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+                line.id = id;
+                svg.appendChild(line);
+            }
+            line.setAttribute("x1", pos1.x);
+            line.setAttribute("y1", pos1.y);
+            line.setAttribute("x2", pos2.x);
+            line.setAttribute("y2", pos2.y);
+            line.setAttribute("stroke-width", "2");
+            line.setAttribute("class", `${color} ${dash} link-solid`);
+            return line;
+        }
+
+        function redrawLines() {
+            const svg = document.getElementById("topology-svg");
+            const expectedLines = new Set();
+            
+            if (currentData.core === "ONLINE" && !pendingDeletions.core && !pendingDeletions.internet) {
+                const corePos = getCenter('node-core');
+                const internetPos = getCenter('node-internet');
+                if (corePos && internetPos) {
+                    const linkId = 'link-core-internet';
+                    expectedLines.add(linkId);
+                    drawLine(svg, linkId, corePos, internetPos, 'stroke-blue-500');
+                }
+            }
+
+            const gnbKeys = Object.keys(currentData.gnbs || {});
+            gnbKeys.forEach(gnbId => {
+                if(currentData.gnbs[gnbId].status === "running" && !pendingDeletions[`gnb-${gnbId}`]) {
+                    const gnbPos = getCenter(`node-gnb-${gnbId}`);
+                    const corePos = getCenter('node-core');
+                    if (gnbPos && corePos) {
+                        const linkId = `link-gnb-${gnbId}-core`;
+                        expectedLines.add(linkId);
+                        drawLine(svg, linkId, gnbPos, corePos, 'stroke-[#FF7900]');
+                    }
+                }
+            });
+
+            const ueKeys = Object.keys(currentData.ues || {});
+            ueKeys.forEach(ueId => {
+                if(currentData.ues[ueId].status === "running" && !pendingDeletions[`ue-${ueId}`]) {
+                    const uePos = getBottomCenter(`node-ue-${ueId}`);
+                    const targetGnb = currentData.ues[ueId].gnb;
+                    const gnbPos = getCenter(`node-gnb-${targetGnb}`);
+                    if (uePos && gnbPos) {
+                        const linkId = `link-ue-${ueId}-gnb-${targetGnb}`;
+                        expectedLines.add(linkId);
+                        drawLine(svg, linkId, uePos, gnbPos, 'stroke-cyan-500', 'stroke-dasharray="4"');
+                    }
+                }
+            });
+
+            Array.from(svg.children).forEach(child => {
+                if (child.tagName === 'line' && 
+                    !expectedLines.has(child.id) && 
+                    !child.classList.contains('node-teardown') &&
+                    !child.classList.contains('ping-packet-success') &&
+                    !child.classList.contains('ping-packet-fail')) {
+                    child.classList.add('node-teardown');
+                    setTimeout(() => {
+                        if (child.parentNode) child.remove();
+                    }, 1200);
+                }
+            });
+        }
+
+        function renderTopology(data) {
+            currentData = data;
+
+            const topology = document.getElementById("topology-container");
+
+            if (data.core === "ONLINE" && !pendingDeletions.core) {
+                if (!document.getElementById("node-core")) {
+                    createNode(
+                        "node-core",
+                        "core",
+                        nodePositions.core,
+                        `
+                            <div class="w-16 h-16 rounded-2xl bg-orange-950/80 border-2 border-[#FF7900] shadow-[0_0_30px_rgba(255,121,0,0.4)] flex items-center justify-center text-3xl">
+                                <i class="fa-solid fa-server text-[#FF7900]"></i>
+                            </div>
+                            <span class="text-xs font-bold font-mono text-white bg-black/60 px-2 py-1 rounded">
+                                5G CORE
+                            </span>
+                        `,
+                        () => openContainerLogs("amf")
+                    );
+                }
+
+                if (!nodePositions.internet) {
+                    nodePositions.internet = { x: 2900, y: 2500 };
+                }
+
+                if (!document.getElementById("node-internet") && !pendingDeletions.internet) {
+                    createNode(
+                        "node-internet",
+                        "internet",
+                        nodePositions.internet,
+                        `
+                            <div class="w-16 h-16 rounded-2xl bg-blue-950/80 border-2 border-blue-500 shadow-[0_0_30px_rgba(59,130,246,0.4)] flex items-center justify-center text-3xl">
+                                <i class="fa-solid fa-cloud text-blue-500"></i>
+                            </div>
+                            <span class="text-xs font-bold font-mono text-white bg-black/60 px-2 py-1 rounded">
+                                INTERNET
+                            </span>
+                        `,
+                        () => {}
+                    );
+                }
+            }
+
+            const gnbKeys = Object.keys(data.gnbs || {});
+            
+            gnbKeys.forEach((id, index) => {
+                if (data.gnbs[id].status === "running" && !pendingDeletions[`gnb-${id}`]) {
+                    if (!nodePositions[`gnb-${id}`]) {
+                        nodePositions[`gnb-${id}`] = {
+                            x: 2000,
+                            y: 2300 + (index * 150)
+                        };
+                    }
+
+                    if (!document.getElementById(`node-gnb-${id}`)) {
+                        const tacValue = data.gnbs[id].tac || 1;
+                        const style = getTacStyle(tacValue);
+
+                        createNode(
+                            `node-gnb-${id}`,
+                            `gnb-${id}`,
+                            nodePositions[`gnb-${id}`],
+                            `
+                                <div class="w-14 h-14 rounded-2xl ${style.bg} border-2 ${style.border} ${style.shadow} flex items-center justify-center text-2xl">
+                                    <i class="fa-solid fa-tower-cell ${style.icon}"></i>
+                                </div>
+                                <div class="flex flex-col items-center mt-1">
+                                    <span class="text-[11px] font-bold font-mono ${style.text} bg-black/60 px-2 py-0.5 rounded-t w-full text-center border-b border-stone-800">
+                                        gNB-${id}
+                                    </span>
+                                    <span class="text-[10px] font-mono ${style.text} bg-black/60 px-2 py-0.5 rounded-b w-full text-center opacity-80">
+                                        TAC(${tacValue})
+                                    </span>
+                                </div>
+                            `,
+                            () => openContainerLogs(`nr_gnb${id}`)
+                        );
+                    }
+                }
+            });
+
+            const ueKeys = Object.keys(data.ues || {});
+            ueKeys.forEach((id, index) => {
+                if (data.ues[id].status === "running" && !pendingDeletions[`ue-${id}`]) {
+                    if (!nodePositions[`ue-${id}`]) {
+                        nodePositions[`ue-${id}`] = {
+                            x: 1500,
+                            y: 2300 + (index * 100)
+                        };
+                    }
+
+                    if (!document.getElementById(`node-ue-${id}`)) {
+                        const ueSst = data.ues[id].sst || 1;
+                        let iconClass = "fa-mobile-screen-button";
+                        if (ueSst == 2) iconClass = "fa-robot"; 
+                        else if (ueSst == 3) iconClass = "fa-microchip"; 
+                        else if (ueSst == 4) iconClass = "fa-car";
+
+                        createNode(
+                            `node-ue-${id}`,
+                            `ue-${id}`,
+                            nodePositions[`ue-${id}`],
+                            `
+                                <div class="w-10 h-10 rounded-full bg-cyan-950/80 border-2 border-cyan-500 shadow-[0_0_15px_rgba(6,182,212,0.4)] flex items-center justify-center text-lg">
+                                    <i class="fa-solid ${iconClass} text-cyan-400"></i>
+                                </div>
+                                <div class="flex flex-col items-center mt-1">
+                                    <span class="text-[10px] font-bold font-mono text-cyan-300 bg-black/60 px-2 py-0.5 rounded-t w-full text-center border-b border-stone-800">
+                                        UE-${id}
+                                    </span>
+                                    <span class="text-[9px] font-mono text-cyan-300 bg-black/60 px-2 py-0.5 rounded-b w-full text-center opacity-80">
+                                        SST: ${ueSst}
+                                    </span>
+                                </div>
+                            `,
+                            () => openContainerLogs(`nr_ue${id}`)
+                        );
+                    }
+                }
+            });
+
+            redrawLines();
+            updateUIStatus(data);
+        }
+
+        function updateUIStatus(data) {
+            const coreBtn = document.getElementById("btn-core-toggle");
+            const coreStatus = document.getElementById("status-core");
+            const systemDot = document.getElementById("system-status-dot");
+            const systemText = document.getElementById("system-status-text");
+            const terminal = document.getElementById("terminal");
+
+            if (data.core === "ONLINE") {
+                coreBtn.innerHTML = '<i class="fa-solid fa-power-off"></i> Stop Core';
+                coreBtn.className = "flex-grow bg-red-950/60 hover:bg-red-900 border border-red-800 text-red-500 font-bold py-2 px-3 rounded-lg text-xs uppercase flex items-center justify-center gap-2 cursor-pointer transition-colors";
+                coreStatus.textContent = "ONLINE";
+                coreStatus.className = "text-[10px] font-bold py-2 rounded-lg bg-emerald-950/30 text-emerald-500 border border-emerald-900/50 w-20 text-center ml-2 shadow-[0_0_10px_rgba(16,185,129,0.2)]";
+                systemDot.className = "w-3 h-3 rounded-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.8)]";
+                systemText.textContent = "System Active";
+                systemText.className = "text-sm font-semibold text-emerald-400 uppercase tracking-wider";
+            } else {
+                coreBtn.innerHTML = '<i class="fa-solid fa-server"></i> Launch 5G Core';
+                coreBtn.className = "flex-grow bg-[#FF7900] hover:bg-[#e56d00] text-black font-bold py-2 px-3 rounded-lg text-xs uppercase flex items-center justify-center gap-2 cursor-pointer transition-colors";
+                coreStatus.textContent = "OFFLINE";
+                coreStatus.className = "text-[10px] font-bold py-2 rounded-lg bg-red-950/20 text-red-500 border border-red-900/40 w-20 text-center ml-2";
+                systemDot.className = "w-3 h-3 rounded-full bg-amber-600 animate-pulse";
+                systemText.textContent = "System Standby";
+                systemText.className = "text-sm font-semibold text-amber-600 uppercase tracking-wider";
+            }
+
+            const atBottom = terminal.scrollHeight - terminal.clientHeight <= terminal.scrollTop + 40;
+            terminal.innerText = data.console_output;
+            if (atBottom) {
+                terminal.scrollTop = terminal.scrollHeight;
+            }
+
+            // Update Custom UE Select - Filtered
+            const ueSelect = document.getElementById("ping-source-select");
+            const customList = document.getElementById("custom-ue-select-list");
+            const ues = Object.keys(data.ues || {}).filter(id => !pendingDeletions[`ue-${id}`]);
+            
+            const currentSelected = ueSelect.value;
+            
+            ueSelect.innerHTML = ues.length > 0 
+                ? '<option value="">-- UE --</option>' 
+                : '<option value="">-- No UEs --</option>';
+                
+            customList.innerHTML = ues.length > 0
+                ? `<div class="p-2 text-xs font-mono text-slate-300 hover:bg-stone-800 cursor-pointer border-b border-stone-800" onclick="selectPingUE('')">-- UE --</div>`
+                : `<div class="p-2 text-xs font-mono text-slate-500 text-center italic">-- No UEs --</div>`;
+
+            ues.forEach(id => {
+                const opt = document.createElement("option");
+                opt.value = id;
+                opt.textContent = `UE ${id}`;
+                if (id === currentSelected) opt.selected = true;
+                ueSelect.appendChild(opt);
+                
+                customList.innerHTML += `<div class="p-2 text-xs font-mono text-slate-300 hover:bg-[#FF7900] hover:text-black cursor-pointer transition-colors text-center font-bold" onclick="selectPingUE('${id}')">UE ${id}</div>`;
+            });
+
+            if (currentSelected && !ues.includes(currentSelected)) {
+                ueSelect.value = "";
+                document.getElementById("custom-ue-select-text").textContent = ues.length > 0 ? "-- UE --" : "-- No UEs --";
+            } else if (currentSelected) {
+                document.getElementById("custom-ue-select-text").textContent = `UE ${currentSelected}`;
+            }
+
+            // Update Main View AMFs List - Filtered
+            const amfList = document.getElementById("active-amfs-list");
+            const amfBadge = document.getElementById("amf-count-badge");
+            const amfKeys = Object.keys(data.amfs || {}).filter(id => !pendingDeletions.core && !pendingDeletions[`amf-${id}`]);
+            
+            amfBadge.textContent = `${amfKeys.length} AMF${amfKeys.length !== 1 ? 's' : ''}`;
+            
+            if (amfKeys.length === 0) {
+                amfList.innerHTML = `<span class="text-xs text-stone-500 font-mono italic">No active AMFs</span>`;
+            } else {
+                amfList.innerHTML = "";
+                amfKeys.forEach(id => {
+                    const amfData = data.amfs[id];
+                    let statusColor = "bg-stone-500";
+                    let glow = "";
+                    
+                    if (amfData.status === "running") {
+                        statusColor = "bg-emerald-500";
+                        glow = "shadow-[0_0_8px_rgba(16,185,129,0.8)]";
+                    } else if (amfData.status === "starting") {
+                        statusColor = "bg-amber-500 animate-pulse";
+                    } else if (amfData.status === "error") {
+                        statusColor = "bg-red-500";
+                    }
+
+                    amfList.innerHTML += `
+                        <div class="flex items-center justify-between bg-black/40 p-1.5 rounded-lg border border-stone-800 text-[10px] font-mono cursor-pointer hover:bg-stone-800 transition-colors" onclick="openContainerLogs('${amfData.container}')">
+                            <div class="flex items-center gap-2">
+                                <span class="w-1.5 h-1.5 rounded-full ${statusColor} ${glow}"></span>
+                                <span class="text-orange-300 font-bold">${amfData.container}</span>
+                            </div>
+                            <span class="text-stone-400">${amfData.ip || 'Pending...'}</span>
+                        </div>
+                    `;
+                });
+            }
+
+            // Update Active Elements Sidebar - Filtered
+            const statusAmfList = document.getElementById("status-amf-list");
+            const statusGnbList = document.getElementById("status-gnb-list");
+            const statusUeList = document.getElementById("status-ue-list");
+
+            statusAmfList.innerHTML = amfKeys.length > 0 ? "" : '<span class="text-[10px] text-stone-500 font-mono italic">No active AMFs currently.</span>';
+            amfKeys.forEach(id => {
+                const amf = data.amfs[id];
+                statusAmfList.innerHTML += `
+                    <div class="bg-stone-900/60 border border-stone-800 p-2.5 rounded-lg flex justify-between items-center text-[11px] font-mono hover:border-stone-700 transition-colors">
+                        <span class="text-orange-400 font-bold flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_5px_rgba(16,185,129,0.5)]"></span>${amf.container || 'amf'+id}</span>
+                        <span class="text-stone-400 text-[10px] bg-black px-2 py-0.5 rounded border border-stone-800">IP: ${amf.ip || 'Pending...'}</span>
+                    </div>
+                `;
+            });
+
+            const gnbKeys = Object.keys(data.gnbs || {}).filter(id => !pendingDeletions[`gnb-${id}`]);
+            statusGnbList.innerHTML = gnbKeys.length > 0 ? "" : '<span class="text-[10px] text-stone-500 font-mono italic">No active gNBs currently.</span>';
+            gnbKeys.forEach(id => {
+                const gnb = data.gnbs[id];
+                if (gnb.status === "running") {
+                    statusGnbList.innerHTML += `
+                        <div class="bg-stone-900/60 border border-stone-800 p-2.5 rounded-lg flex justify-between items-center text-[11px] font-mono hover:border-stone-700 transition-colors">
+                            <span class="text-emerald-400 font-bold flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_5px_rgba(16,185,129,0.5)]"></span>gNB-${id}</span>
+                            <div class="flex gap-2">
+                                <span class="text-stone-400 text-[10px] bg-black px-2 py-0.5 rounded border border-stone-800">TAC: ${gnb.tac}</span>
+                                <span class="text-stone-400 text-[10px] bg-black px-2 py-0.5 rounded border border-stone-800">IP: ${gnb.ip || 'Pending...'}</span>
+                            </div>
+                        </div>
+                    `;
+                }
+            });
+
+            const ueKeysStatus = Object.keys(data.ues || {}).filter(id => !pendingDeletions[`ue-${id}`]);
+            statusUeList.innerHTML = ueKeysStatus.length > 0 ? "" : '<span class="text-[10px] text-stone-500 font-mono italic">No active UEs currently.</span>';
+            ueKeysStatus.forEach(id => {
+                const ue = data.ues[id];
+                if (ue.status === "running") {
+                    statusUeList.innerHTML += `
+                        <div class="bg-stone-900/60 border border-stone-800 p-2.5 rounded-lg flex flex-col gap-2 text-[11px] font-mono hover:border-stone-700 transition-colors">
+                            <div class="flex justify-between items-center border-b border-stone-800 pb-2">
+                                <span class="text-cyan-400 font-bold flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_5px_rgba(16,185,129,0.5)]"></span>UE-${id}</span>
+                                <span class="text-stone-400 text-[10px] bg-black px-2 py-0.5 rounded border border-stone-800">gNB Connected to: ${ue.gnb}</span>
+                            </div>
+                            <span class="text-stone-400 text-[10px] text-right w-full">IP: ${ue.ip || 'Pending...'}</span>
+                        </div>
+                    `;
+                }
+            });
+        }
+
+        function animatePingStream(ueId, isSuccess) {
+            const svg = document.getElementById("topology-svg");
+            const ueNode = document.getElementById(`node-ue-${ueId}`);
+            
+            if (!ueNode) return;
+
+            const targetGnbId = currentData.ues[ueId].gnb;
+            
+            // استخدام الإحداثيات المسجلة للتحايل في حالة كان المكون ممسوحاً لتصوير انقطاع المسار
+            let gnbPos = getCenter(`node-gnb-${targetGnbId}`);
+            if (!gnbPos) {
+                gnbPos = getFallbackCenter(`gnb-${targetGnbId}`, 2000, 2300, 28);
+            }
+            
+            let corePos = getCenter('node-core');
+            if (!corePos) {
+                corePos = getFallbackCenter('core', 2500, 2500, 32);
+            }
+            
+            let internetPos = getCenter('node-internet');
+            if (!internetPos) {
+                internetPos = getFallbackCenter('internet', 2900, 2500, 32);
+            }
+
+            const pathPoints = [
+                getBottomCenter(`node-ue-${ueId}`),
+                gnbPos,
+                corePos,
+                internetPos
+            ];
+
+            for (let i = 0; i < 4; i++) {
+                setTimeout(() => {
+                    createAndAnimatePacket(svg, pathPoints, isSuccess);
+                }, i * 400);
+            }
+        }
+
+        function createAndAnimatePacket(svg, points, isSuccess) {
+            if (points.length < 2) return;
+
+            const packet = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+            packet.setAttribute("class", isSuccess ? "ping-packet-success" : "ping-packet-fail");
+            svg.appendChild(packet);
+
+            let currentSegment = 0;
+
+            function animateSegment() {
+                if (currentSegment >= points.length - 1) {
+                    if (isSuccess && points.length > 1) {
+                        currentSegment = points.length - 1;
+                        animateReverseSegment();
+                    } else {
+                        packet.remove();
+                    }
+                    return;
+                }
+
+                const start = points[currentSegment];
+                const end = points[currentSegment + 1];
+                
+                packet.setAttribute("cx", start.x);
+                packet.setAttribute("cy", start.y);
+
+                const duration = 400;
+                const startTime = performance.now();
+
+                function step(time) {
+                    const progress = (time - startTime) / duration;
+                    
+                    if (progress < 1) {
+                        const x = start.x + (end.x - start.x) * progress;
+                        const y = start.y + (end.y - start.y) * progress;
+                        packet.setAttribute("cx", x);
+                        packet.setAttribute("cy", y);
+                        requestAnimationFrame(step);
+                    } else {
+                        currentSegment++;
+                        animateSegment();
+                    }
+                }
+                
+                requestAnimationFrame(step);
+            }
+
+            function animateReverseSegment() {
+                if (currentSegment <= 0) {
+                    packet.remove();
+                    return;
+                }
+
+                const start = points[currentSegment];
+                const end = points[currentSegment - 1];
+                
+                packet.setAttribute("cx", start.x);
+                packet.setAttribute("cy", start.y);
+
+                const duration = 400;
+                const startTime = performance.now();
+
+                function step(time) {
+                    const progress = (time - startTime) / duration;
+                    
+                    if (progress < 1) {
+                        const x = start.x + (end.x - start.x) * progress;
+                        const y = start.y + (end.y - start.y) * progress;
+                        packet.setAttribute("cx", x);
+                        packet.setAttribute("cy", y);
+                        requestAnimationFrame(step);
+                    } else {
+                        currentSegment--;
+                        animateReverseSegment();
+                    }
+                }
+                
+                requestAnimationFrame(step);
+            }
+
+            animateSegment();
+        }
+
+        setInterval(() => {
+            fetch("/api/status")
+                .then(response => response.json())
+                .then(data => {
+                    const oldGnbs = Object.keys(currentData.gnbs || {});
+                    const newGnbs = Object.keys(data.gnbs || {});
+                    
+                    oldGnbs.forEach(id => {
+                        if (!newGnbs.includes(id)) {
+                            const node = document.getElementById(`node-gnb-${id}`);
+                            const link = document.getElementById(`link-gnb-${id}-core`);
+                            if (node) {
+                                node.classList.add("node-teardown");
+                                if (link) link.classList.add("node-teardown");
+                                setTimeout(() => {
+                                    node.remove();
+                                    if(link) link.remove();
+                                    delete nodePositions[`gnb-${id}`];
+                                }, 1200);
+                            }
+                            delete pendingDeletions[`gnb-${id}`];
+                        }
+                    });
+
+                    const oldUes = Object.keys(currentData.ues || {});
+                    const newUes = Object.keys(data.ues || {});
+                    
+                    oldUes.forEach(id => {
+                        if (!newUes.includes(id)) {
+                            const node = document.getElementById(`node-ue-${id}`);
+                            const oldGnb = currentData.ues[id].gnb;
+                            const link = document.getElementById(`link-ue-${id}-gnb-${oldGnb}`);
+                            if (node) {
+                                node.classList.add("node-teardown");
+                                if (link) link.classList.add("node-teardown");
+                                setTimeout(() => {
+                                    node.remove();
+                                    if(link) link.remove();
+                                    delete nodePositions[`ue-${id}`];
+                                }, 1200);
+                            }
+                            delete pendingDeletions[`ue-${id}`];
+                        } else {
+                            const oldGnb = currentData.ues[id].gnb;
+                            const newGnb = data.ues[id].gnb;
+                            if (oldGnb !== newGnb) {
+                                const oldLink = document.getElementById(`link-ue-${id}-gnb-${oldGnb}`);
+                                if (oldLink) {
+                                    oldLink.classList.add("node-teardown");
+                                    setTimeout(() => {
+                                        if (oldLink.parentNode) oldLink.remove();
+                                    }, 1200);
+                                }
+                                const ueNode = document.getElementById(`node-ue-${id}`);
+                                if (ueNode) {
+                                    ueNode.classList.remove("node-blinking");
+                                }
+                            }
+                        }
+                    });
+
+                    if (currentData.core === "ONLINE" && data.core === "OFFLINE") {
+                        const coreNode = document.getElementById("node-core");
+                        const internetNode = document.getElementById("node-internet");
+                        const coreInternetLink = document.getElementById("link-core-internet");
+                        
+                        if (coreNode) coreNode.classList.add("node-teardown");
+                        if (internetNode) internetNode.classList.add("node-teardown");
+                        if (coreInternetLink) coreInternetLink.classList.add("node-teardown");
+
+                        setTimeout(() => {
+                            if (coreNode) coreNode.remove();
+                            if (internetNode) internetNode.remove();
+                            if (coreInternetLink) coreInternetLink.remove();
+                            delete nodePositions.internet;
+                        }, 1200);
+
+                        delete pendingDeletions.core;
+                        delete pendingDeletions.internet;
+                    }
+
+                    renderTopology(data);
+                })
+                .catch(error => console.error("Error fetching status:", error));
+        }, 1000);
+        
+        window.addEventListener('resize', redrawLines);
+
+        window.addEventListener('load', () => {
+            const boundary = document.getElementById("canvas-boundary");
+            const inner = document.getElementById("canvas-inner");
+
+            if (boundary) {
+                boundary.scrollLeft = (boundary.scrollWidth - boundary.clientWidth) / 2;
+                boundary.scrollTop = (boundary.scrollHeight - boundary.clientHeight) / 2;
+
+                boundary.addEventListener('wheel', (e) => {
+                    if (e.ctrlKey) {
+                        e.preventDefault(); 
+                        
+                        const rect = inner.getBoundingClientRect();
+                        const mouseX = (e.clientX - rect.left) / currentZoom;
+                        const mouseY = (e.clientY - rect.top) / currentZoom;
+                        
+                        let zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
+                        if (Math.abs(e.deltaY) < 50) {
+                            zoomFactor = 1 - (e.deltaY * 0.01);
+                        }
+                        
+                        let newZoom = currentZoom * zoomFactor;
+                        newZoom = Math.max(0.2, Math.min(newZoom, 4)); 
+                        currentZoom = newZoom;
+                        
+                        inner.style.transform = `scale(${currentZoom})`;
+                        
+                        const boundaryRect = boundary.getBoundingClientRect();
+                        boundary.scrollLeft = (mouseX * currentZoom) - (e.clientX - boundaryRect.left);
+                        boundary.scrollTop = (mouseY * currentZoom) - (e.clientY - boundaryRect.top);
+                    }
+                }, { passive: false });
+            }
+        });
+    </script>
+</body>
+</html>
