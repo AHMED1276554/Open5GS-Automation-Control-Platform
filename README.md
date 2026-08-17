@@ -1,10 +1,9 @@
-# Open5GS-Automation-Control-Platform
-The Open5GS Automation Control Platform is an advanced management solution designed to revolutionize the deployment and operation of 5G core networks based on Open5GS.
-
-
 # Open5GS Automation Control Platform
 
 A comprehensive automation platform designed to manage and control an Open5GS 5G core network end-to-end (E2E). This platform simplifies the deployment, monitoring, and scaling of 5G network components through an intuitive web interface.
+
+## 📦 Getting Started
+The project is currently stable and hosted on the **`master` branch**. You can clone the repository and run the application immediately with the provided configuration.
 
 ## 🚀 Key Features
 
@@ -48,9 +47,10 @@ A comprehensive automation platform designed to manage and control an Open5GS 5G
 
 ## 🚀 How to Run
 
-1.  **Navigate** to the root directory of the project:
+1.  **Clone the Repository** (the stable version is in the `master` branch):
     ```bash
-    cd /path/to/Open5GS-Automation-Control-Platform
+    git clone https://github.com/AHMED1276554/Open5GS-Automation-Control-Platform.git
+    cd Open5GS-Automation-Control-Platform
     ```
 2.  **Launch** the application:
     ```bash
