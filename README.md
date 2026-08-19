@@ -47,16 +47,25 @@ The project is currently stable and hosted on the **`master` branch**. You can c
 
 ## 🚀 How to Run
 
-1.  **Clone the Repository** (the stable version is in the `master` branch):
+1. **Clone the Repository** (the stable version is in the `master` branch):
     ```bash
-    git clone https://github.com/AHMED1276554/Open5GS-Automation-Control-Platform.git
+    git clone [https://github.com/AHMED1276554/Open5GS-Automation-Control-Platform.git](https://github.com/AHMED1276554/Open5GS-Automation-Control-Platform.git)
     cd Open5GS-Automation-Control-Platform
     ```
-2.  **Launch** the application:
+
+2. **Set up the Python Virtual Environment & Install Dependencies**:
+    ```bash
+    python3 -m venv venv
+    source venv/bin/activate
+    pip install -r requirements.txt
+    ```
+
+3. **Launch** the application:
     ```bash
     sudo python3 app.py
     ```
-3.  **Access** the dashboard via your browser:
+
+4. **Access** the dashboard via your browser:
     *   `http://localhost:5000`
 
 ---
