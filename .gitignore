@@ -1,7 +1,0 @@
-log/
-**/*.log
-**/*.ctxt
-**/*.pcap
-**/*.db
-**/*.db-shm
-**/*.db-wal
